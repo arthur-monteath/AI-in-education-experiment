@@ -1,8 +1,15 @@
 package org.research;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.List;
 
 public class QuestionsApp {
@@ -10,6 +17,7 @@ public class QuestionsApp {
     private JPanel mainPanel;
     private QuestionsApi questionsApi;
     private GptApi gptApi;
+    private String loggedInUser;  // Track the logged-in user
 
     private long startTime;
     private int questionIndex = 0;  // Track the current question index
@@ -30,11 +38,71 @@ public class QuestionsApp {
         // Create the main panel layout
         mainPanel = new JPanel(new BorderLayout());
 
-        // Load and display the exercise packets from the API
-        loadExercisePackets();
+        // Prompt for login code
+        promptForLogin();
 
         frame.add(mainPanel);
         frame.setVisible(true);
+    }
+
+    private void promptForLogin() {
+        JPanel loginPanel = new JPanel();
+        loginPanel.setLayout(new BoxLayout(loginPanel, BoxLayout.Y_AXIS));
+
+        JLabel label = new JLabel("Enter your login code:");
+        JTextField codeField = new JTextField(10);
+        JButton loginButton = new JButton("Login");
+
+        loginButton.addActionListener(e -> {
+            String code = codeField.getText();
+            if (verifyLoginCode(code)) {
+                JOptionPane.showMessageDialog(frame, "Login successful! Welcome " + loggedInUser);
+                loadExercisePackets();
+            } else {
+                JOptionPane.showMessageDialog(frame, "Invalid code. Please try again.");
+                codeField.setText("");
+            }
+        });
+
+        loginPanel.add(label);
+        loginPanel.add(codeField);
+        loginPanel.add(loginButton);
+
+        mainPanel.add(loginPanel, BorderLayout.CENTER);
+        mainPanel.updateUI();
+        mainPanel.revalidate();
+        mainPanel.repaint();
+    }
+
+    // Verify the login code by accessing the Google Sheets API
+    private boolean verifyLoginCode(String code) {
+        try {
+            // Example REST API endpoint that checks the code and returns a user
+            // Sheet: https://docs.google.com/spreadsheets/d/1PYix9SScrZU147ztThYBSbC-LPuIRmml2gibo9RPx98/edit
+            URL url = new URL("https://script.google.com/macros/s/AKfycbzdQyuRxsZP9rZyB5fMmk_s7I7sqabp_wrA9k-sXZhp7fpPjV2q_yVXLiV8FXau_FmH/exec?code=" + code);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+
+            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            StringBuilder response = new StringBuilder();
+            String line;
+
+            while ((line = in.readLine()) != null) {
+                response.append(line);
+            }
+            in.close();
+
+            // Parse the JSON response
+            JsonObject jsonResponse = JsonParser.parseString(response.toString()).getAsJsonObject();
+            if (jsonResponse.has("user")) {
+                loggedInUser = jsonResponse.get("user").getAsString();  // Get the user's name
+                return true;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     private void loadExercisePackets() {
@@ -60,7 +128,6 @@ public class QuestionsApp {
         }
 
         mainPanel.add(new JScrollPane(packetPanel), BorderLayout.CENTER);
-
         mainPanel.updateUI();
         mainPanel.revalidate();
         mainPanel.repaint();
