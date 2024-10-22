@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.BufferedReader;
@@ -23,6 +24,12 @@ public class QuestionsApp {
     private int questionIndex = 0;  // Track the current question index
     private int selectedAnswerIndex = -1;  // Track the selected answer index
 
+    Color backgroundColor = new Color(245, 245, 245);  // Light gray background
+    Color panelColor = new Color(255, 255, 255);        // White panel color
+    Color buttonColor = new Color(0, 102, 204);         // Blue button color
+    Color buttonTextColor = Color.WHITE;                // White button text
+    Font defaultFont = new Font("SansSerif", Font.PLAIN, 18);  // Default font
+
     public QuestionsApp() {
         questionsApi = new QuestionsApi();
         gptApi = new GptApi();
@@ -38,6 +45,13 @@ public class QuestionsApp {
         // Create the main panel layout
         mainPanel = new JPanel(new BorderLayout());
 
+        // Set global background color for the frame
+        frame.getContentPane().setBackground(backgroundColor);
+
+        // Set default font for mainPanel and its components
+        mainPanel.setFont(defaultFont);
+        mainPanel.setBackground(backgroundColor);
+
         // Prompt for login code
         promptForLogin();
 
@@ -48,10 +62,23 @@ public class QuestionsApp {
     private void promptForLogin() {
         JPanel loginPanel = new JPanel();
         loginPanel.setLayout(new BoxLayout(loginPanel, BoxLayout.Y_AXIS));
+        loginPanel.setBackground(panelColor);
+        loginPanel.setBorder(new EmptyBorder(20, 20, 20, 20)); // Add padding around the panel
 
         JLabel label = new JLabel("Enter your login code:");
+        label.setFont(defaultFont);
+        label.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         JTextField codeField = new JTextField(10);
+        codeField.setFont(defaultFont);
+        codeField.setMaximumSize(new Dimension(200, 30)); // Limit width and height
+        codeField.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         JButton loginButton = new JButton("Login");
+        loginButton.setFont(defaultFont);
+        loginButton.setBackground(buttonColor);
+        loginButton.setForeground(buttonTextColor);
+        loginButton.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         loginButton.addActionListener(e -> {
             String code = codeField.getText();
@@ -64,8 +91,12 @@ public class QuestionsApp {
             }
         });
 
+        // Add some spacing between components
+        loginPanel.add(Box.createVerticalStrut(10));  // Vertical space
         loginPanel.add(label);
+        loginPanel.add(Box.createVerticalStrut(10));  // Vertical space
         loginPanel.add(codeField);
+        loginPanel.add(Box.createVerticalStrut(10));  // Vertical space
         loginPanel.add(loginButton);
 
         mainPanel.add(loginPanel, BorderLayout.CENTER);
@@ -74,12 +105,13 @@ public class QuestionsApp {
         mainPanel.repaint();
     }
 
+
     // Verify the login code by accessing the Google Sheets API
     private boolean verifyLoginCode(String code) {
         try {
             // Example REST API endpoint that checks the code and returns a user
             // Sheet: https://docs.google.com/spreadsheets/d/1PYix9SScrZU147ztThYBSbC-LPuIRmml2gibo9RPx98/edit
-            URL url = new URL("https://script.google.com/macros/s/AKfycbzdQyuRxsZP9rZyB5fMmk_s7I7sqabp_wrA9k-sXZhp7fpPjV2q_yVXLiV8FXau_FmH/exec?code=" + code);
+            URL url = new URL("https://script.google.com/macros/s/AKfycby0_nRLiRWubekH_zaFsT-oSpcvOFKrkrmw0OpRTkm1gmJ85bzu5qkm7Z2nOOGQeTRi/exec?code=" + code);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
 
@@ -108,12 +140,20 @@ public class QuestionsApp {
     private void loadExercisePackets() {
         mainPanel.removeAll();
         String[] exercisePackets = questionsApi.getAvailablePackets();
+
         JPanel packetPanel = new JPanel();
         packetPanel.setLayout(new BoxLayout(packetPanel, BoxLayout.Y_AXIS));
+        packetPanel.setBackground(backgroundColor);
+        packetPanel.setBorder(new EmptyBorder(20, 20, 20, 20));  // Padding
 
-        // Display the available exercise packets
         for (String packet : exercisePackets) {
             JButton packetButton = new JButton(packet);
+            packetButton.setFont(defaultFont);
+            packetButton.setBackground(buttonColor);
+            packetButton.setForeground(buttonTextColor);
+            packetButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+            packetButton.setMaximumSize(new Dimension(300, 40));  // Button size
+
             packetButton.addActionListener(e -> {
                 int confirm = JOptionPane.showConfirmDialog(frame,
                         "Do you really want to start the exercise: " + packet + "?",
@@ -124,6 +164,7 @@ public class QuestionsApp {
                     startExercise(packet);
                 }
             });
+            packetPanel.add(Box.createVerticalStrut(10));  // Add space between buttons
             packetPanel.add(packetButton);
         }
 
@@ -133,22 +174,44 @@ public class QuestionsApp {
         mainPanel.repaint();
     }
 
+
     private void startExercise(String packetName) {
         mainPanel.removeAll();
-        JPanel exercisePanel = new JPanel(new GridLayout(1, 2));
 
-        // Left panel: ChatGPT interface
+        // Main panel to hold ChatGPT and Question sections
+        JPanel exercisePanel = new JPanel(new GridLayout(1, 2, 20, 20));  // 20px gap between the two panels
+        exercisePanel.setBorder(new EmptyBorder(20, 20, 20, 20));         // Margin from the edges
+        exercisePanel.setBackground(backgroundColor);
+
+        // ---- Left panel: ChatGPT interface ----
+        JPanel chatPanel = new JPanel(new BorderLayout(10, 10)); // 10px padding
+        chatPanel.setBackground(panelColor);
+        chatPanel.setBorder(new EmptyBorder(10, 10, 10, 10));    // Padding inside the chat panel
+
+        // Chat area (output)
         JTextArea chatArea = new JTextArea();
         chatArea.setEditable(false);
+        chatArea.setFont(defaultFont);
+        chatArea.setBorder(new EmptyBorder(10, 10, 10, 10));  // Padding inside the chat area
+        chatArea.setLineWrap(true);
+        chatArea.setWrapStyleWord(true);
+
+        // Chat input (for typing questions)
         JTextField chatInput = new JTextField();
+        chatInput.setFont(defaultFont);
+        chatInput.setPreferredSize(new Dimension(300, 40));   // Preferred size for input
+
+        // Send button
         JButton sendChatButton = new JButton("Send");
+        sendChatButton.setFont(defaultFont);
+        sendChatButton.setBackground(buttonColor);
+        sendChatButton.setForeground(buttonTextColor);
 
         sendChatButton.addActionListener(e -> {
             String userInput = chatInput.getText();
             chatArea.append("You: " + userInput + "\n");
             chatInput.setText("");
 
-            // Use the streaming callback for real-time updates
             gptApi.sendMessage(userInput, new StreamCallback() {
                 @Override
                 public void onResponsePart(String part) {
@@ -167,27 +230,46 @@ public class QuestionsApp {
             });
         });
 
-        JPanel chatPanel = new JPanel(new BorderLayout());
-        chatPanel.add(new JScrollPane(chatArea), BorderLayout.CENTER);
-        JPanel chatInputPanel = new JPanel(new BorderLayout());
+        // Assemble chat panel
+        JPanel chatInputPanel = new JPanel(new BorderLayout(10, 10));
         chatInputPanel.add(chatInput, BorderLayout.CENTER);
         chatInputPanel.add(sendChatButton, BorderLayout.EAST);
+        chatPanel.add(new JScrollPane(chatArea), BorderLayout.CENTER);
         chatPanel.add(chatInputPanel, BorderLayout.SOUTH);
 
-        // Right panel: Exercise questions with radio buttons for alternatives
-        JPanel questionPanel = new JPanel(new BorderLayout());
+        // ---- Right panel: Question section ----
+        JPanel questionPanel = new JPanel(new BorderLayout(10, 10));
+        questionPanel.setBackground(panelColor);
+        questionPanel.setBorder(new EmptyBorder(10, 10, 10, 10));  // Padding around the question section
+
+        // Question area (to display the question text)
         JTextArea questionArea = new JTextArea();
         questionArea.setEditable(false);
-        JPanel optionsPanel = new JPanel(new GridLayout(4, 1)); // To hold radio buttons for alternatives
-        ButtonGroup optionsGroup = new ButtonGroup();  // Group the radio buttons so only one can be selected
+        questionArea.setFont(defaultFont);
+        questionArea.setBorder(new EmptyBorder(10, 10, 10, 10));  // Padding inside the question area
+        questionArea.setLineWrap(true);
+        questionArea.setWrapStyleWord(true);
 
+        // Panel for radio button options
+        JPanel optionsPanel = new JPanel(new GridLayout(4, 1, 5, 5));  // 5px gap between radio buttons
+        optionsPanel.setBackground(panelColor);
+
+        ButtonGroup optionsGroup = new ButtonGroup();  // Grouping radio buttons
+
+        // Next button to go to the next question
         JButton nextButton = new JButton("Next");
+        nextButton.setFont(defaultFont);
+        nextButton.setBackground(buttonColor);
+        nextButton.setForeground(buttonTextColor);
+
         nextButton.addActionListener(e -> submitAndLoadNextQuestion(packetName, questionArea, optionsPanel, optionsGroup));
 
+        // Assemble question panel
         questionPanel.add(new JScrollPane(questionArea), BorderLayout.NORTH);
         questionPanel.add(optionsPanel, BorderLayout.CENTER);  // Add the radio button options panel
         questionPanel.add(nextButton, BorderLayout.SOUTH);     // Add "Next" button below the options
 
+        // Add both panels (Chat and Question) to the main panel
         exercisePanel.add(chatPanel);
         exercisePanel.add(questionPanel);
 
@@ -200,6 +282,7 @@ public class QuestionsApp {
         loadQuestion(packetName, questionArea, optionsPanel, optionsGroup);
     }
 
+
     // Unified method to handle both first and next questions
     private void submitAndLoadNextQuestion(String packetName, JTextArea questionArea, JPanel optionsPanel, ButtonGroup optionsGroup) {
         // Check if an answer was selected
@@ -210,8 +293,14 @@ public class QuestionsApp {
 
         long timeTaken = System.currentTimeMillis() - startTime;
 
-        // Submit selected answer (index) and timing to the API
-        questionsApi.submitAnswer(packetName, questionIndex, String.valueOf(selectedAnswerIndex), timeTaken);
+        // Get the current question and whether the answer is correct
+        Question currentQuestion = questionsApi.getQuestion(packetName, questionIndex);
+        String selectedAnswer = currentQuestion.getAlternatives().get(selectedAnswerIndex);
+        boolean isCorrect = selectedAnswerIndex == currentQuestion.getCorrectAnswerIndex();
+        System.out.println(selectedAnswerIndex + "   " + currentQuestion.getCorrectAnswerIndex());
+
+        // Submit selected answer and timing to Google Sheets
+        questionsApi.submitAnswerToGoogleSheet(packetName, loggedInUser, questionIndex, selectedAnswer, isCorrect, timeTaken);
 
         // Load next question or end exercise
         questionIndex++;

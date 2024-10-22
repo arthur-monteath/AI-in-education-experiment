@@ -7,6 +7,7 @@ import com.google.gson.reflect.TypeToken;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -49,7 +50,7 @@ public class QuestionsApi {
     // Get a specific question from a packet
     public Question getQuestion(String packetName, int questionIndex) {
         try {
-            URL url = new URL(API_URL + "/packet/" + packetName + "/questions/" + questionIndex);
+            URL url = new URL(API_URL + "/packets/" + packetName + "/questions/" + questionIndex);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
 
@@ -76,7 +77,7 @@ public class QuestionsApi {
     public boolean hasMoreQuestions(String packetName, int questionIndex) {
         try {
             // Get the packet info (including the list of questions)
-            URL url = new URL(API_URL + "/packet/" + packetName + "/questions");
+            URL url = new URL(API_URL + "/packets/" + packetName);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
 
@@ -102,28 +103,48 @@ public class QuestionsApi {
     }
 
     // Submit the answer and timing for a question
-    public void submitAnswer(String packetName, int questionIndex, String answer, long timeTaken) {
+    public void submitAnswerToGoogleSheet(String packetName, String user, int question, String answer, boolean isCorrect, long timeTaken) {
         try {
-            URL url = new URL(API_URL + "/packet/" + packetName + "/questions/" + questionIndex + "/submit");
+            // Google Apps Script Web App URL
+            URL url = new URL("https://script.google.com/macros/s/AKfycby0_nRLiRWubekH_zaFsT-oSpcvOFKrkrmw0OpRTkm1gmJ85bzu5qkm7Z2nOOGQeTRi/exec");  // Replace with your script URL
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "application/json");  // Set content type to JSON
+            conn.setRequestProperty("Content-Type", "application/json");
             conn.setDoOutput(true);
 
-            // Build the JSON payload
+            // Create the JSON payload to send to Google Sheets
             JsonObject jsonPayload = new JsonObject();
+            jsonPayload.addProperty("packet", packetName);
+            jsonPayload.addProperty("user", user);
+            jsonPayload.addProperty("question", question);
             jsonPayload.addProperty("answer", answer);
+            jsonPayload.addProperty("correct", isCorrect ? "Yes" : "No");
             jsonPayload.addProperty("timeTaken", timeTaken);
 
             // Write the JSON data to the output stream
-            conn.getOutputStream().write(jsonPayload.toString().getBytes());
+            OutputStream os = conn.getOutputStream();
+            os.write(jsonPayload.toString().getBytes());
+            os.flush();
+            os.close();
 
-            // Get the response to ensure it went through
+            // Read the response from the server
             BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-            in.readLine();  // Just read the response
+            String line;
+            StringBuilder response = new StringBuilder();
+
+            while ((line = in.readLine()) != null) {
+                response.append(line);
+            }
             in.close();
 
-        } catch (IOException e) {
+            // Check for success
+            if (response.toString().contains("success")) {
+                System.out.println("Answer submitted successfully!");
+            } else {
+                System.out.println("Failed to submit answer.");
+            }
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
